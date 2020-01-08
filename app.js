@@ -6,7 +6,7 @@ var logger = require('morgan');
 var mongoose = require('mongoose');
 var serverless = require('serverless-http');
 var cors = require("cors");
-var Base = require('../models/Base.js');
+var Base = require('./models/Base.js');
 var apiRouter = require('./routes/base');
 
 var app = express();
