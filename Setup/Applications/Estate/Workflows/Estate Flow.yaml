@@ -20,7 +20,7 @@ phases:
 - type: AWS_CODEDEPLOY
   computeProviderName: aws
   daemonSet: false
-  infraDefinitionName: CodeDeploy AaO
+  infraDefinitionName: CodeDeploy OaaT
   name: Phase 1
   phaseSteps:
   - type: PREPARE_STEPS
@@ -84,7 +84,7 @@ rollbackPhases:
 - type: AWS_CODEDEPLOY
   computeProviderName: aws
   daemonSet: false
-  infraDefinitionName: CodeDeploy AaO
+  infraDefinitionName: CodeDeploy OaaT
   name: Rollback Phase 1
   phaseNameForRollback: Phase 1
   phaseSteps:
