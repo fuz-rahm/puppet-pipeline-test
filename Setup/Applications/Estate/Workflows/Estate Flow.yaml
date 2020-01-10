@@ -52,7 +52,13 @@ phases:
       properties:
         bucket: ${artifact.bucketName}
         bundleType: zip
+        enableAutoRollback: false
+        fileExistsBehavior: OVERWRITE
+        ignoreApplicationStopFailures: true
         key: ${artifact.key}
+        templateUuid: null
+        templateVariables: null
+        templateVersion: null
     - type: SHELL_SCRIPT
       name: Shell Script
       properties:
