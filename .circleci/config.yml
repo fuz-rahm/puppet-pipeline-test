@@ -160,19 +160,19 @@ workflows:
             - unit_test
             - pa11y_test
             - snyk_test
-          # filters:
-          #   branches:
-          #     only:
-          #       - master
-          #       - staging
+          filters:
+            branches:
+              only:
+                - master
+                - staging
       - deploy:
           requires:
             - terraform
-          # filters:
-          #   branches:
-          #     only:
-          #       - master
-          #       - staging
+          filters:
+            branches:
+              only:
+                - master
+                - staging
       - post-deploy:
           requires:
             - deploy
