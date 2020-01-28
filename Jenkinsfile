@@ -1,80 +1,105 @@
 pipeline {
-    environment {
-        registry = "luther007/jenkins-eks-automated"
-        registryCredential = 'docker-hub-credentials'
-        dockerImage = ''
-        AWS_ACCESS_KEY_ID     = credentials('JenkinsAWSKey')
-        AWS_SECRET_ACCESS_KEY = credentials('JenkinsAWSKeySecret')
-        PATH = "/root/bin:${env.PATH}"
-    }
-
     agent {
-        docker {
-            image 'luther007/cynerge_images:latest'
-            args '-u root'
-        }
+        label 'master'
     }
+    tools {
+        maven 'maven'
+        jdk 'java8'
+        nodejs "Node10"
+        
+    }  
 
     stages {
-    
-        stage('Dependencies') {
-            steps {
-                echo 'Installing...'
-                sh 'npm install'
-            }
-        }
-        stage('Test') {
-            steps {
-                echo 'Testing...'
-                sh 'npm test'
-            }
-        }
-        stage('Build') {
-            steps {
-                script {
-                    dockerImage = docker.build registry + ":$BUILD_NUMBER"
-                }
-            }
-        }
-        stage('Deploy') {
-            steps {
-                script {
-                    docker.withRegistry( '', registryCredential ) {
-                    dockerImage.push()
-                    dockerImage.push('latest')
-                    }
-                }
-            }
-        }
-        stage('Remove Unused docker image') {
+        stage('clean workspace') {
             steps{
-                sh "docker rmi $registry:$BUILD_NUMBER"
+                cleanWs()
             }
         }
-        stage('Deploy Kube') {
-            steps {
-                // sh 'curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -'
-                // sh 'echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list'
-                // sh 'apt-get update'
-                // sh 'apt-get install -y kubectl'
-                // sh 'kubectl config --kubeconfig=cluster-config use-context ljoliff@cynerge-cluster-6.us-east-1.eksctl.io'
-                // sh 'export KUBECONFIG=$KUBECONFIG:cluster-config'
-                // sh 'curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.12.7/2019-03-27/bin/linux/amd64/aws-iam-authenticator'
-                // sh 'chmod +x ./aws-iam-authenticator'
-                // sh 'mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$HOME/bin:$PATH && cp ./aws-iam-authenticator /usr/bin/aws-iam-authenticator'
-                // sh 'echo export PATH=$HOME/bin:$PATH >> ~/.bashrc'
-                sh "export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
-                sh "export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
-                sh 'printenv'
-                // sh 'cp cluster-config ~/.kube/'
-                sh "kubectl set image deployment/jenkins-eks-automated mike1=luther007/jenkins-eks-automated:$BUILD_NUMBER --kubeconfig=cluster-config"
-            }
-        }
-    }
-    post { 
-        always { 
-            cleanWs()
-        }
-    }
-}
 
+        stage('Checkout from Github') {
+        
+            steps{
+                checkout([$class: 'GitSCM', branches: [[name: '*/mr/addpa11y-ci']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/fuz-rahm/maven-samples.git']]])
+            }
+        }
+
+
+       
+        stage('508 Testing'){
+            steps {
+                script {
+                    sh 'rm -rf pa11y'
+
+                    sh 'mkdir pa11y'
+                    sh label: '', returnStdout: true, script: 'sh runpa11y.sh'
+                     publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '', reportFiles: 'pa11y/index.html', reportName: '508 Testing Report', reportTitles: '508 Accessibility Report'])
+                }
+            }
+         }
+
+          stage('Lighthouse') {
+            agent {
+            label 'master'
+            }
+            when {
+              branch 'master'
+            }
+             steps {
+                  deleteDir()
+                  checkout scm
+                  sh 'npm install'
+                    sh 'npm run lighthouse'
+                }
+        }
+
+      
+
+        stage('build') {
+            steps {
+                sh 'echo "path: ${PATH}"'
+                sh 'echo "M2_HOME: ${M2_HOME}"'
+                sh 'mvn clean install -Dmaven.test.failure.ignore=true'
+            }
+        }
+
+
+
+        
+    }
+
+    post {
+        always {
+            publishHTML (target: [
+            allowMissing: false,
+            alwaysLinkToLastBuild: false,
+            keepAll: true,
+            reportDir: '.',
+            reportFiles: 'lighthouse-report.html',
+            reportName: "Lighthouse"
+            ])
+        }
+    }
+
+    
+
+    //post {
+        //always {
+            //archive "target/**/*"
+            //junit 'target/surefire-reports/*.xml'
+        //}
+        //success {
+            //mail to:"mrahman@cynerge.com", subject:"SUCCESS: ${env.JOB_NAME} <br>Build Number: ${env.BUILD_NUMBER} <br> URL de build: ${env.BUILD_URL}", body: "Yay, we passed."
+        //}
+        //failure {
+            //mail to:"mahfuzurrahm518@gmail.com", subject:"FAILURE: ${env.JOB_NAME} <br>Build Number: ${env.BUILD_NUMBER} <br> URL de build: ${env.BUILD_URL}", body: "Boo, we failed."
+        //}
+        //unstable {
+            //mail to:"jenkinsemailnotification31@gmail.com", subject:"UNSTABLE: ${env.JOB_NAME} <br>Build Number: ${env.BUILD_NUMBER} <br> URL de build: ${env.BUILD_URL}", body: "Huh, we're unstable."
+        //}
+    //}
+
+    
+
+
+    
+}
